@@ -111,7 +111,7 @@ def main():
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 10px 0;
+        padding: 5px 0;
     }
     .banner-container img {
         width: 100%;  /* Banner stretches across the page */
