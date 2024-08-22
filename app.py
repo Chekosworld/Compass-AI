@@ -8,7 +8,7 @@ from io import BytesIO
 from PIL import Image
 
 # Groq API configuration
-GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+GROQ_API_KEY = st.secrets["API_KEY"]
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
