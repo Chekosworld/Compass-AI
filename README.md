@@ -88,6 +88,17 @@ Once the app is running, you can:
 
 4. **Analytics**:
    - The "Analytics" section will soon allow you to track your campaigns and get valuable insights.
+  
+## 📚 Additional Resources
+
+- **Compass_Model**: We have created a model named "Compass_Model." The reason we haven't used it extensively was due to a lack of GPU resources. The model was deployed but lacked the necessary computational power. It was generated using data from Llama 3.1 405B and was pre-trained on Llama 3.1 8B with fine-tuning applied.
+  
+  - **Model on Hugging Face**: [Compass_Model](https://huggingface.co/RafaM97/Compass_Model)
+
+- **Marketing Social Media Dataset**: This dataset is designed to support AI-driven marketing tools, providing data essential for content generation, strategy planning, and more. It includes a comprehensive collection of marketing campaigns focused on various industries, channels, and objectives.
+  
+  - **Dataset on Hugging Face**: [Marketing Social Media Dataset](https://huggingface.co/datasets/RafaM97/marketing_social_media)
+     
 
 ## 💡 Future Features
 - **Campaign Analytics**: Analyze the success of your campaigns and track metrics like engagement and reach.
