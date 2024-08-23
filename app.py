@@ -16,7 +16,6 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 GROQ_API_KEY = st.secrets["API_KEY"]
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-
 # Error handling decorator
 def handle_errors(func):
     def wrapper(*args, **kwargs):
