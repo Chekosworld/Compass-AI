@@ -268,7 +268,7 @@ def show_campaign_creation():
     content_type = st.selectbox("Content Type", ["Social Media Post", "Ad Copy", "Email"])
     content_prompt = st.text_area("Describe the content you want to generate")
 
-   if st.button("Generate Content"):
+    if st.button("Generate Content"):
         instruction = f"Create a single {content_type} for a {industry} company, focusing on {campaign_objective}"
         input_context = f"Brand: {brand_name}, Target Audience: {target_audience}, Objective: {campaign_objective}, Content Details: {content_prompt}"
         
