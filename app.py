@@ -418,37 +418,7 @@ def load_scheduled_posts():
             return json.load(f)
     return {}
 
-import streamlit as st
-import requests
-import json
-from datetime import datetime
-from PIL import Image
-import os
-import uuid
 
-# Meta API configuration
-ACCESS_TOKEN = st.secrets["META_ACCESS_TOKEN"]
-PAGE_ID = st.secrets["META_PAGE_ID"]
-
-
-HEADERS = {
-    "Authorization": f"Bearer {ACCESS_TOKEN}",
-    "Content-Type": "application/json"
-}
-
-def post_to_facebook(message, image_url=None, scheduled_time=None):
-    url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/feed"
-    data = {
-        "message": message,
-        "published": "false" if scheduled_time else "true",
-    }
-    if image_url:
-        data["link"] = image_url
-    if scheduled_time:
-        data["scheduled_publish_time"] = int(scheduled_time.timestamp())
-    
-    response = requests.post(url, headers=HEADERS, json=data)
-    return response.json()
 
 
 def show_scheduling():
