@@ -1,12 +1,12 @@
 import streamlit as st
 from datetime import datetime, timedelta
 import requests
-import base64
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
+import json
+import uuid
+import os
 from io import BytesIO
 from PIL import Image
-from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
@@ -15,10 +15,19 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 # Groq API configuration
 GROQ_API_KEY = st.secrets["API_KEY"]
 
-
-
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
+# Error handling decorator
+def handle_errors(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            return None
+    return wrapper
+
+@handle_errors
 def generate_marketing_content(instruction, input_context, is_strategy=False):
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -27,7 +36,7 @@ def generate_marketing_content(instruction, input_context, is_strategy=False):
     
     system_message = "You are a helpful AI assistant specializing in marketing and content creation."
     if is_strategy:
-        system_message += " For strategy, provide a day-by-day breakdown."
+        system_message += " For strategy, provide a unique day-by-day breakdown tailored to the specific input."
     else:
         system_message += " For content, focus on creating a single cohesive piece without day-by-day breakdown."
     
@@ -39,7 +48,8 @@ def generate_marketing_content(instruction, input_context, is_strategy=False):
             {"role": "system", "content": system_message},
             {"role": "user", "content": f"Instruction: {instruction}\nInput: {input_context}\nPlease format your response in markdown, excluding any links."}
         ],
-        "max_tokens": 1000
+        "max_tokens": 1000,
+        "temperature": 0.7  # Adjust this value to increase randomness and uniqueness
     }
     
     response = requests.post(GROQ_API_URL, headers=headers, json=data)
@@ -47,7 +57,8 @@ def generate_marketing_content(instruction, input_context, is_strategy=False):
     if response.status_code == 200:
         return response.json()['choices'][0]['message']['content']
     else:
-        return f"Error: Unable to generate content. Status code: {response.status_code}"
+        raise Exception(f"Unable to generate content. Status code: {response.status_code}")
+ 
 
 def create_pdf(content):
     buffer = BytesIO()
@@ -175,16 +186,16 @@ def main():
     st.image(logo, use_column_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Sidebar for navigation
-    page = st.sidebar.selectbox("Choose a page", ["Home", "Post Creation", "Strategy", "Scheduling", "Analytics"])
+      # Sidebar for navigation
+    page = st.sidebar.selectbox("Choose a page", ["Home", "Post Creation", "Marketing Strategy", "Scheduling", "Analytics"])
 
     # Handle page selection
     if page == "Home":
         show_home()
     elif page == "Post Creation":
-        show_campaign_creation()
-    elif page == "Strategy":
-        show_strategy()
+        show_post_creation()
+    elif page == "Marketing Strategy":
+        show_marketing_strategy()
     elif page == "Scheduling":
         show_scheduling()
     elif page == "Analytics":
@@ -292,8 +303,35 @@ def show_home():
     st.markdown('<p class="sub-font">Get started by selecting a feature from the sidebar!</p>', unsafe_allow_html=True)
 
 
-def show_campaign_creation():
+@handle_errors
+def show_post_creation():
     st.header("Post Creation")
+    
+    content_type = st.selectbox("Content Type", ["Social Media Post", "Ad Copy", "Email"])
+    content_prompt = st.text_area("Describe the content you want to generate")
+
+    if st.button("Generate Content"):
+        if not content_prompt:
+            st.warning("Please provide a content description.")
+        else:
+            instruction = f"Create a single {content_type}"
+            
+            with st.spinner("Generating content..."):
+                generated_content = generate_marketing_content(instruction, content_prompt)
+            
+            st.markdown(generated_content)
+            
+            # Download as PDF
+            pdf = create_pdf(generated_content)
+            st.download_button(
+                label="Download Generated Content as PDF",
+                data=pdf,file_name="generated_content.pdf",
+                mime="application/pdf"
+            )
+
+@handle_errors
+def show_marketing_strategy():
+    st.header("Marketing Strategy")
     
     # Brand Questionnaire
     st.subheader("Brand Questionnaire")
@@ -301,68 +339,129 @@ def show_campaign_creation():
     industry = st.selectbox("Industry", ["Technology", "Fashion", "Food & Beverage", "Other"])
     target_audience = st.text_area("Describe your target audience")
     campaign_objective = st.selectbox("Campaign Objective", ["Brand Awareness", "Lead Generation", "Sales", "Other"])
-
-    # Content Generation
-    st.subheader("Content Generation")
-    content_type = st.selectbox("Content Type", ["Social Media Post", "Ad Copy", "Email"])
-    content_prompt = st.text_area("Describe the content you want to generate")
-
-    if st.button("Generate Content"):
-        instruction = f"Create a single {content_type} for a {industry} company, focusing on {campaign_objective}"
-        input_context = f"Brand: {brand_name}, Target Audience: {target_audience}, Objective: {campaign_objective}, Content Details: {content_prompt}"
-        
-        with st.spinner("Generating content..."):
-            generated_content = generate_marketing_content(instruction, input_context)
-        
-        st.markdown(generated_content)
-        
-        # Download as PDF
-        pdf = create_pdf(generated_content)
-        st.download_button(
-            label="Download Generated Content as PDF",
-            data=pdf,
-            file_name="generated_content.pdf",
-            mime="application/pdf"
-        )
-
-def show_strategy():
-    st.header("Marketing Strategy")
     
     start_date = st.date_input("Campaign Start Date")
     duration = st.number_input("Campaign Duration (days)", min_value=1, value=30)
     
     if st.button("Generate Strategy"):
-        instruction = f"Generate a day-by-day marketing strategy for {duration} days"
-        input_context = f"Start Date: {start_date}, Duration: {duration} days"
-        
-        with st.spinner("Generating strategy..."):
-            strategy = generate_marketing_content(instruction, input_context, is_strategy=True)
-        
-        st.subheader("Generated Marketing Strategy")
-        st.markdown(strategy)
-        
-        # Download as PDF
-        pdf = create_pdf(strategy)
-        st.download_button(
-            label="Download Marketing Strategy as PDF",
-            data=pdf,
-            file_name="marketing_strategy.pdf",
-            mime="application/pdf"
-        )
-   
+        if not all([brand_name, industry, target_audience, campaign_objective]):
+            st.warning("Please fill in all the fields in the Brand Questionnaire.")
+        else:
+            instruction = f"Generate a unique day-by-day marketing strategy for {duration} days"
+            input_context = f"Brand: {brand_name}, Industry: {industry}, Target Audience: {target_audience}, Objective: {campaign_objective}, Start Date: {start_date}, Duration: {duration} days"
+            
+            with st.spinner("Generating strategy..."):
+                strategy = generate_marketing_content(instruction, input_context, is_strategy=True)
+            
+            st.subheader("Generated Marketing Strategy")
+            st.markdown(strategy)
+            
+            # Download as PDF
+            pdf = create_pdf(strategy)
+            st.download_button(
+                label="Download Marketing Strategy as PDF",
+                data=pdf,
+                file_name="marketing_strategy.pdf",
+                mime="application/pdf"
+            )
+import streamlit as st
+import requests
+import json
+from datetime import datetime, timedelta
+from PIL import Image
+import io
+import os
+import uuid
+ACCESS_TOKEN = st.secrets["META_ACCESS_TOKEN"]
+PAGE_ID = st.secrets["META_PAGE_ID"]
+
+HEADERS = {
+    "Authorization": f"Bearer {ACCESS_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+def post_to_facebook(message, image_url=None, scheduled_time=None):
+    url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/feed"
+    data = {
+        "message": message,
+        "published": "false" if scheduled_time else "true",
+    }
+    if image_url:
+        data["link"] = image_url
+    if scheduled_time:
+        data["scheduled_publish_time"] = int(scheduled_time.timestamp())
+    
+    response = requests.post(url, headers=HEADERS, json=data)
+    return response.json()
+
+
+
+def save_scheduled_post(platform, content, image_path, scheduled_time):
+    # Create a unique ID for the scheduled post
+    post_id = str(uuid.uuid4())
+    
+    # Save post details to a JSON file
+    scheduled_posts = load_scheduled_posts()
+    scheduled_posts[post_id] = {
+        "platform": platform,
+        "content": content,
+        "image_path": image_path,
+        "scheduled_time": scheduled_time.isoformat()
+    }
+    
+    with open("scheduled_posts.json", "w") as f:
+        json.dump(scheduled_posts, f)
+
+def load_scheduled_posts():
+    if os.path.exists("scheduled_posts.json"):
+        with open("scheduled_posts.json", "r") as f:
+            return json.load(f)
+    return {}
+
+import streamlit as st
+import requests
+import json
+from datetime import datetime
+from PIL import Image
+import os
+import uuid
+
+# Meta API configuration
+ACCESS_TOKEN = st.secrets["META_ACCESS_TOKEN"]
+PAGE_ID = st.secrets["META_PAGE_ID"]
+
+
+HEADERS = {
+    "Authorization": f"Bearer {ACCESS_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+def post_to_facebook(message, image_url=None, scheduled_time=None):
+    url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/feed"
+    data = {
+        "message": message,
+        "published": "false" if scheduled_time else "true",
+    }
+    if image_url:
+        data["link"] = image_url
+    if scheduled_time:
+        data["scheduled_publish_time"] = int(scheduled_time.timestamp())
+    
+    response = requests.post(url, headers=HEADERS, json=data)
+    return response.json()
 
 
 def show_scheduling():
     st.header("Content Scheduling")
     
-    platforms = st.multiselect("Select Platforms", ["Facebook", "Instagram", "Twitter"])
+    platforms = ["Facebook"]  # Remove Instagram option
     
-    post_content = st.text_area("Post Content")
+    post_content = st.text_area("Post Content", key="schedule_post_content")
     
-    uploaded_image = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"])
+    uploaded_image = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"], key="schedule_image_upload")
     
-    post_date = st.date_input("Post Date")
-    post_time = st.time_input("Post Time")
+    post_date = st.date_input("Post Date", key="schedule_post_date")
+    post_time = st.time_input("Post Time", key="schedule_post_time")
     
     if post_content or uploaded_image:
         st.subheader("Preview")
@@ -371,34 +470,54 @@ def show_scheduling():
         
         with col1:
             if post_content:
-                st.text_area("Content Preview", post_content, height=150, disabled=True)
+                st.text_area("Content Preview", post_content, height=150, disabled=True, key="schedule_content_preview")
         
         with col2:
             if uploaded_image:
                 image = Image.open(uploaded_image)
                 st.image(image, caption="Uploaded Image", use_column_width=True)
     
-    if st.button("Schedule Post"):
-        if not platforms:
-            st.warning("Please select at least one platform.")
-        elif not post_content and not uploaded_image:
+    if st.button("Schedule Post", key="schedule_post_button"):
+        if not post_content and not uploaded_image:
             st.warning("Please add content or upload an image.")
         else:
             scheduled_datetime = datetime.combine(post_date, post_time)
-            for platform in platforms:
-                st.success(f"Post scheduled for {platform} at {scheduled_datetime}")
             
-            # Here you would typically save the post details to a database or send to an API
-            # For demonstration, we'll just display the details
+            # Save image temporarily if uploaded
+            image_path = None
+            if uploaded_image:
+                image_path = f"temp_image_{uuid.uuid4()}.jpg"
+                Image.open(uploaded_image).save(image_path)
+            
+            response = post_to_facebook(post_content, image_path, scheduled_datetime)
+            if "id" in response:
+                st.success(f"Post scheduled for Facebook at {scheduled_datetime}")
+                # Save scheduled post
+                save_scheduled_post("Facebook", post_content, image_path, scheduled_datetime)
+            else:
+                st.error(f"Error scheduling Facebook post: {response.get('error', {}).get('message', 'Unknown error')}")
+            
+            # Display scheduled post details
             st.subheader("Scheduled Post Details")
             st.write(f"Date and Time: {scheduled_datetime}")
-            st.write(f"Platforms: {', '.join(platforms)}")
+            st.write("Platform: Facebook")
             if post_content:
                 st.write("Content:")
-                st.text(post_content)
+                st.text_area("Scheduled Content", post_content, height=150, disabled=True, key="scheduled_content_display")
             if uploaded_image:
                 st.write("Image:")
                 st.image(image, caption="Scheduled Image", use_column_width=True)
+
+    # Display scheduled posts
+    st.subheader("Scheduled Posts")
+    scheduled_posts = load_scheduled_posts()
+    for post_id, post_data in scheduled_posts.items():
+        st.write(f"Platform: {post_data['platform']}")
+        st.write(f"Scheduled Time: {post_data['scheduled_time']}")
+        st.text_area(f"Content for post {post_id}", post_data['content'], height=100, disabled=True, key=f"scheduled_post_{post_id}")
+        if post_data['image_path']:
+            st.image(post_data['image_path'], caption="Scheduled Image", width=200)
+        st.write("---")
 
 def show_analytics():
     st.header("Campaign Analytics")
