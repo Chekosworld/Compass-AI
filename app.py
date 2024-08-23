@@ -6,16 +6,16 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from io import BytesIO
 from PIL import Image
-from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-from io import BytesIO
-
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
 # Groq API configuration
 GROQ_API_KEY = st.secrets["API_KEY"]
+
+
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -52,23 +52,62 @@ def generate_marketing_content(instruction, input_context, is_strategy=False):
 def create_pdf(content):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, 
-                            rightMargin=72, leftMargin=72, 
-                            topMargin=72, bottomMargin=18)
+                            rightMargin=inch, leftMargin=inch, 
+                            topMargin=inch, bottomMargin=inch)
     
     styles = getSampleStyleSheet()
-    style = styles["Normal"]
+    
+    # Create custom styles
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+    
+    heading_style = ParagraphStyle(
+        'HeadingStyle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceBefore=12,
+        spaceAfter=6
+    )
+    
+    normal_style = ParagraphStyle(
+        'NormalStyle',
+        parent=styles['Normal'],
+        fontSize=11,
+        spaceBefore=6,
+        spaceAfter=6
+    )
     
     story = []
     
     # Split content into paragraphs
     paragraphs = content.split('\n\n')
-    for para in paragraphs:
-        p = Paragraph(para, style)
+    
+    # Process paragraphs and apply appropriate styling
+    for i, para in enumerate(paragraphs):
+        if i == 0:  # First paragraph as title
+            p = Paragraph(para, title_style)
+        elif para.startswith('#'):  # Headings
+            level = para.count('#')
+            text = para.lstrip('#').strip()
+            if level == 2:
+                p = Paragraph(text, heading_style)
+            else:
+                p = Paragraph(text, normal_style)
+        else:  # Normal paragraphs
+            p = Paragraph(para, normal_style)
+        
         story.append(p)
+        story.append(Spacer(1, 6))  # Add space between paragraphs
     
     doc.build(story)
     buffer.seek(0)
     return buffer
+
 
 import streamlit as st
 from PIL import Image, ImageOps
@@ -122,7 +161,7 @@ def main():
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 5px 0;
+        padding: 10px 0;
     }
     .banner-container img {
         width: 100%;  /* Banner stretches across the page */
@@ -137,12 +176,12 @@ def main():
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Sidebar for navigation
-    page = st.sidebar.selectbox("Choose a page", ["Home", "Campaign Creation", "Strategy", "Scheduling", "Analytics"])
+    page = st.sidebar.selectbox("Choose a page", ["Home", "Post Creation", "Strategy", "Scheduling", "Analytics"])
 
     # Handle page selection
     if page == "Home":
         show_home()
-    elif page == "Campaign Creation":
+    elif page == "Post Creation":
         show_campaign_creation()
     elif page == "Strategy":
         show_strategy()
@@ -254,7 +293,7 @@ def show_home():
 
 
 def show_campaign_creation():
-    st.header("Campaign Creation")
+    st.header("Post Creation")
     
     # Brand Questionnaire
     st.subheader("Brand Questionnaire")
@@ -310,19 +349,56 @@ def show_strategy():
             file_name="marketing_strategy.pdf",
             mime="application/pdf"
         )
+   
+
 
 def show_scheduling():
     st.header("Content Scheduling")
     
     platforms = st.multiselect("Select Platforms", ["Facebook", "Instagram", "Twitter"])
+    
     post_content = st.text_area("Post Content")
+    
+    uploaded_image = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"])
+    
     post_date = st.date_input("Post Date")
     post_time = st.time_input("Post Time")
     
+    if post_content or uploaded_image:
+        st.subheader("Preview")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if post_content:
+                st.text_area("Content Preview", post_content, height=150, disabled=True)
+        
+        with col2:
+            if uploaded_image:
+                image = Image.open(uploaded_image)
+                st.image(image, caption="Uploaded Image", use_column_width=True)
+    
     if st.button("Schedule Post"):
-        scheduled_datetime = datetime.combine(post_date, post_time)
-        for platform in platforms:
-            st.success(f"Post scheduled for {platform} at {scheduled_datetime}")
+        if not platforms:
+            st.warning("Please select at least one platform.")
+        elif not post_content and not uploaded_image:
+            st.warning("Please add content or upload an image.")
+        else:
+            scheduled_datetime = datetime.combine(post_date, post_time)
+            for platform in platforms:
+                st.success(f"Post scheduled for {platform} at {scheduled_datetime}")
+            
+            # Here you would typically save the post details to a database or send to an API
+            # For demonstration, we'll just display the details
+            st.subheader("Scheduled Post Details")
+            st.write(f"Date and Time: {scheduled_datetime}")
+            st.write(f"Platforms: {', '.join(platforms)}")
+            if post_content:
+                st.write("Content:")
+                st.text(post_content)
+            if uploaded_image:
+                st.write("Image:")
+                st.image(image, caption="Scheduled Image", use_column_width=True)
 
 def show_analytics():
     st.header("Campaign Analytics")
