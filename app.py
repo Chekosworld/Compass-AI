@@ -6,6 +6,13 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from io import BytesIO
 from PIL import Image
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from io import BytesIO
+
 
 # Groq API configuration
 GROQ_API_KEY = st.secrets["API_KEY"]
@@ -44,18 +51,22 @@ def generate_marketing_content(instruction, input_context, is_strategy=False):
 
 def create_pdf(content):
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    width, height = letter
+    doc = SimpleDocTemplate(buffer, pagesize=letter, 
+                            rightMargin=72, leftMargin=72, 
+                            topMargin=72, bottomMargin=18)
     
-    c.setFont("Helvetica", 12)
-    textobject = c.beginText(40, height - 40)
-    for line in content.split('\n'):
-        textobject.textLine(line.strip())
-    c.drawText(textobject)
+    styles = getSampleStyleSheet()
+    style = styles["Normal"]
     
-    c.showPage()
-    c.save()
+    story = []
     
+    # Split content into paragraphs
+    paragraphs = content.split('\n\n')
+    for para in paragraphs:
+        p = Paragraph(para, style)
+        story.append(p)
+    
+    doc.build(story)
     buffer.seek(0)
     return buffer
 
@@ -257,7 +268,7 @@ def show_campaign_creation():
     content_type = st.selectbox("Content Type", ["Social Media Post", "Ad Copy", "Email"])
     content_prompt = st.text_area("Describe the content you want to generate")
 
-    if st.button("Generate Content"):
+   if st.button("Generate Content"):
         instruction = f"Create a single {content_type} for a {industry} company, focusing on {campaign_objective}"
         input_context = f"Brand: {brand_name}, Target Audience: {target_audience}, Objective: {campaign_objective}, Content Details: {content_prompt}"
         
