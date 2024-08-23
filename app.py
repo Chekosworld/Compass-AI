@@ -384,7 +384,7 @@ def post_to_facebook(message, image_url=None, scheduled_time=None):
     url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/feed"
     data = {
         "message": message,
-        "published": "false" if scheduled_time else "true",
+        "published": False if scheduled_time else True,
     }
     if image_url:
         data["link"] = image_url
