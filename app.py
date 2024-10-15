@@ -371,28 +371,27 @@ from PIL import Image
 import io
 import os
 import uuid
-#ACCESS_TOKEN = st.secrets["META_ACCESS_TOKEN"]
-#PAGE_ID = st.secrets["META_PAGE_ID"]
+ACCESS_TOKEN = st.secrets["META_ACCESS_TOKEN"]
+PAGE_ID = st.secrets["META_PAGE_ID"]
 
-HEADERS = {
-    "Authorization": f"Bearer {ACCESS_TOKEN}",
-    "Content-Type": "application/json"
-}
+#HEADERS = {
+#    "Authorization": f"Bearer {ACCESS_TOKEN}",
+#    "Content-Type": "application/json"
+#}
 
-def post_to_facebook(message, image_url=None, scheduled_time=None):
-    url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/feed"
-    data = {
-        "message": message,
-        "published": False if scheduled_time else True,
-    }
-    if image_url:
-        data["link"] = image_url
-    if scheduled_time:
-        data["scheduled_publish_time"] = int(scheduled_time.timestamp())
+#def post_to_facebook(message, image_url=None, scheduled_time=None):
+#    url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/feed"
+#    data = {
+#        "message": message,
+#        "published": False if scheduled_time else True,
+#    }
+#    if image_url:
+#        data["link"] = image_url
+    # if scheduled_time:
+    #     data["scheduled_publish_time"] = int(scheduled_time.timestamp())
     
-    response = requests.post(url, headers=HEADERS, json=data)
-    return response.json()
-
+    # response = requests.post(url, headers=HEADERS, json=data)
+    # return response.json() 
 
 
 def save_scheduled_post(platform, content, image_path, scheduled_time):
