@@ -371,8 +371,8 @@ from PIL import Image
 import io
 import os
 import uuid
-ACCESS_TOKEN = st.secrets["META_ACCESS_TOKEN"]
-PAGE_ID = st.secrets["META_PAGE_ID"]
+#ACCESS_TOKEN = st.secrets["META_ACCESS_TOKEN"]
+#PAGE_ID = st.secrets["META_PAGE_ID"]
 
 HEADERS = {
     "Authorization": f"Bearer {ACCESS_TOKEN}",
